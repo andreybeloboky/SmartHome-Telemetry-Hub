@@ -35,7 +35,7 @@ public class SmartHomeHub {
     private static void saveToDatabase(String data) throws SQLException {
         try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
              PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
-            String[] parts = data.split(":"); // например "temp:22.5"
+            String[] parts = data.split(":");
             stmt.setString(1, parts[0]);
             stmt.setDouble(2, Double.parseDouble(parts[1]));
             stmt.executeUpdate();
