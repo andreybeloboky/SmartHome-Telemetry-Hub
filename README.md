@@ -1,4 +1,4 @@
-SmartHomeHub is a console-based Java application that acts as a simple telemetry hub for receiving sensor data over a TCP connection and storing it in a PostgreSQL database. The program listens on port 8080, accepts incoming connections from sensor clients, reads a single line of text in the format DEVICE_NAME:VALUE, validates the input, and inserts the parsed data into the sensor_logs table using JDBC. The project is implemented in Java and uses environment variables for database configuration.
+**[GitHub]** SmartHomeHub is a console-based Java application that acts as a simple telemetry hub for receiving sensor data over a TCP connection and storing it in a PostgreSQL database. The program listens on port 8080, accepts incoming connections from sensor clients, reads a single line of text in the format DEVICE_NAME:VALUE, validates the input, and inserts the parsed data into the sensor_logs table using JDBC. The project is implemented in Java and uses environment variables for database configuration.
 
 Getting started
 
