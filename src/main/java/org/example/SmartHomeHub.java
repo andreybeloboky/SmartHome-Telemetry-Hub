@@ -19,25 +19,35 @@ public class SmartHomeHub {
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");
-            Socket clientSocket = serverSocket.accept();
-            System.out.println("Sensor connected: " + clientSocket.getInetAddress());
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-            String data = in.readLine();
-            saveToDatabase(data);
-            System.out.println("Received: " + data);
-            out.println("OK: Data received");
-        } catch (SQLException | IOException e) {
-            throw new RuntimeException(e);
+            while (true) {
+                try (Socket clientSocket = serverSocket.accept(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())); PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+                    System.out.println("Sensor connected: " + clientSocket.getInetAddress());
+                    String data = in.readLine();
+                    if (data != null && data.contains(":")) {
+                        try {
+                            saveToDatabase(data);
+                            System.out.println("Received and Saved: " + data);
+                            out.println("STATUS:OK");
+                        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+                            out.println("ERROR: Invalid Data Format");
+                        }
+                    }
+                } catch (IOException | SQLException e) {
+                    System.err.println("Error handling client: " + e.getMessage());
+                }
+            }
+        }catch (IOException e) {
+            System.err.println("Could not start server: " + e.getMessage());
         }
     }
 
     private static void saveToDatabase(String data) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD); PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
             String[] parts = data.split(":");
-            stmt.setString(1, parts[0]);
-            stmt.setDouble(2, Double.parseDouble(parts[1]));
+            String name = parts[0].trim();
+            String number = parts[1].trim();
+            stmt.setString(1, name);
+            stmt.setDouble(2, Double.parseDouble(number));
             stmt.executeUpdate();
         }
     }
