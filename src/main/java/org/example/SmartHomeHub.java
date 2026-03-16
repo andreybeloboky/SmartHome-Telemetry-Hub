@@ -20,7 +20,9 @@ public class SmartHomeHub {
         try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");
             while (true) {
-                try (Socket clientSocket = serverSocket.accept(); BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())); PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
+                try (Socket clientSocket = serverSocket.accept();
+                     BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                     PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
                     String data = in.readLine();
                     if (data != null && data.contains(":")) {
