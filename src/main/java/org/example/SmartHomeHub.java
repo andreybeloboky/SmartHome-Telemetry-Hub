@@ -26,25 +26,25 @@ public class SmartHomeHub {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
                     String data = in.readLine();
                     if (data != null && data.contains(":")) {
-                        try {
-                            saveToDatabase(data);
-                            System.out.println("Received and Saved: " + data);
-                            out.println("STATUS:OK");
-                        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                            out.println("ERROR: Invalid Data Format");
-                        }
+                        saveToDatabase(data);
+                        System.out.println("Received and Saved: " + data);
+                        out.println("STATUS:OK");
+                    } else {
+                        System.out.printf("ERROR: Invalid Data Format [%s]", data);
+                        out.printf("ERROR: Invalid Data Format [%s]", data);
                     }
                 } catch (IOException | SQLException e) {
                     System.err.println("Error handling client: " + e.getMessage());
                 }
             }
-        }catch (IOException e) {
+        } catch (IOException e) {
             System.err.println("Could not start server: " + e.getMessage());
         }
     }
 
     private static void saveToDatabase(String data) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD); PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
             String[] parts = data.split(":");
             String name = parts[0].trim();
             String number = parts[1].trim();
