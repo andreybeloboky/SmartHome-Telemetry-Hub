@@ -27,20 +27,24 @@ public class SmartHomeHub {
                      PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
                     String data = in.readLine();
-                    if (data != null && data.contains(":")) {
-                        handleData(data);
-                        System.out.printf("Received and Saved: [%s] \n", data);
-                        out.println("STATUS:OK");
-                    } else {
-                        System.err.printf("INVALID FORMAT: [%s] \n ", data);
-                        out.printf("ERROR: Invalid Data Format: [%s] \n", data);
-                    }
+                    processRequest(data, out);
                 } catch (IOException e) {
                     System.err.println("Error handling client: " + e.getMessage());
                 }
             }
         } catch (IOException e) {
             System.err.println("Could not start server: " + e.getMessage());
+        }
+    }
+
+    private static void processRequest(String data, PrintWriter out) {
+        if (data != null && data.contains(":")) {
+            handleData(data);
+            System.out.printf("Received and Saved: [%s] \n", data);
+            out.println("STATUS:OK");
+        } else {
+            System.err.printf("INVALID FORMAT: [%s] \n ", data);
+            out.printf("ERROR: Invalid Data Format: [%s] \n", data);
         }
     }
 
