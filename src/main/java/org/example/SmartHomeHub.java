@@ -29,11 +29,11 @@ public class SmartHomeHub {
                     String data = in.readLine();
                     if (data != null && data.contains(":")) {
                         handleData(data);
-                        System.out.println("Received and Saved: " + data);
+                        System.out.printf("Received and Saved: [%s] \n", data);
                         out.println("STATUS:OK");
                     } else {
-                        System.err.println("INVALID FORMAT: " + data);
-                        out.println("ERROR: Invalid Data Format: " + data);
+                        System.err.printf("INVALID FORMAT: [%s] \n ", data);
+                        out.printf("ERROR: Invalid Data Format: [%s] \n", data);
                     }
                 } catch (IOException e) {
                     System.err.println("Error handling client: " + e.getMessage());
