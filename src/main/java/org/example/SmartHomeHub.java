@@ -28,27 +28,34 @@ public class SmartHomeHub {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
                     String data = in.readLine();
                     if (data != null && data.contains(":")) {
-                        try (Connection conn = openConnection();
-                             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
-                            String[] parts = data.split(":");
-                            String name = parts[0].trim();
-                            String number = parts[1].trim();
-                            stmt.setString(1, name);
-                            stmt.setDouble(2, Double.parseDouble(number));
-                            stmt.executeUpdate();
-                        }
+                        handleData(data);
                         System.out.println("Received and Saved: " + data);
                         out.println("STATUS:OK");
                     } else {
-                        System.out.printf("ERROR: Invalid Data Format [%s]", data);
-                        out.printf("ERROR: Invalid Data Format [%s]", data);
+                        System.err.println("INVALID FORMAT: " + data);
+                        out.println("ERROR: Invalid Data Format: " + data);
                     }
-                } catch (IOException | SQLException e) {
+                } catch (IOException e) {
                     System.err.println("Error handling client: " + e.getMessage());
                 }
             }
         } catch (IOException e) {
             System.err.println("Could not start server: " + e.getMessage());
+        }
+    }
+
+    private static void handleData(String data) {
+        try (Connection conn = openConnection();
+             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+            String[] parts = data.split(":");
+            String name = parts[0].trim();
+            String number = parts[1].trim();
+            stmt.setString(1, name);
+            stmt.setDouble(2, Double.parseDouble(number));
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            log.warn("Error while loading", e);
+            throw new DataAccessException("Failed to load investment from database", e);
         }
     }
 
