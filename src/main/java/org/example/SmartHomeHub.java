@@ -8,11 +8,13 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SmartHomeHub {
 
     private static final String URL = System.getenv("DB_URL");
-    private static final String USER = System.getenv("DB_LOGIN");
+    private static final String LOGIN = System.getenv("DB_LOGIN");
     private static final String PASSWORD = System.getenv("DB_PASSWORD");
     private static final String SQL_INSERT = "INSERT INTO sensor_logs (device_name, reading_value) VALUES (?, ?)";
 
@@ -26,7 +28,15 @@ public class SmartHomeHub {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
                     String data = in.readLine();
                     if (data != null && data.contains(":")) {
-                        saveToDatabase(data);
+                        try (Connection conn = openConnection();
+                             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+                            String[] parts = data.split(":");
+                            String name = parts[0].trim();
+                            String number = parts[1].trim();
+                            stmt.setString(1, name);
+                            stmt.setDouble(2, Double.parseDouble(number));
+                            stmt.executeUpdate();
+                        }
                         System.out.println("Received and Saved: " + data);
                         out.println("STATUS:OK");
                     } else {
@@ -42,15 +52,13 @@ public class SmartHomeHub {
         }
     }
 
-    private static void saveToDatabase(String data) throws SQLException {
-        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
-            String[] parts = data.split(":");
-            String name = parts[0].trim();
-            String number = parts[1].trim();
-            stmt.setString(1, name);
-            stmt.setDouble(2, Double.parseDouble(number));
-            stmt.executeUpdate();
+    private static Connection openConnection() throws SQLException {
+        try {
+            log.info("Opening database connection");
+            return DriverManager.getConnection(URL, LOGIN, PASSWORD);
+        } catch (SQLException e) {
+            log.warn("Unable to establish database connection", e);
+            throw new DataAccessException("Impossible connect with database", e);
         }
     }
 }
