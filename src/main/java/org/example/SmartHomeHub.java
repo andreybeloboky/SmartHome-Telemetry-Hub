@@ -26,6 +26,7 @@ public class SmartHomeHub {
                      BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                      PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
                     System.out.println("Sensor connected: " + clientSocket.getInetAddress());
+                    clientSocket.setSoTimeout(5000);
                     String data = in.readLine();
                     processRequest(data, out);
                 } catch (IOException e) {
