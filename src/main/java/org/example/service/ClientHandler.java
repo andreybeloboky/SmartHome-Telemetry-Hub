@@ -5,10 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.exception.DataAccessException;
@@ -18,14 +15,16 @@ public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
     private final SystemStats stats;
-    private static final String URL = System.getenv("DB_URL");
-    private static final String LOGIN = System.getenv("DB_LOGIN");
-    private static final String PASSWORD = System.getenv("DB_PASSWORD");
+    private final Connection conn;
     private static final String SQL_INSERT = "INSERT INTO sensor_logs (device_name, reading_value) VALUES (?, ?)";
+    private static final String SQL_INSERT_DEVICE = "INSERT INTO device_status (device_id, total_messages_sent) VALUES (?,1)";
+    private static final String SQL_UPDATE_DEVICE = "UPDATE device_status SET total_messages_sent = total_messages_sent+1, last_seen = CURRENT_TIMESTAMP WHERE device_id = ?";
+    private static final String SQL_SELECT_DEVICE = "SELECT device_id FROM device_status WHERE device_id = ? FOR UPDATE";
 
-    public ClientHandler(Socket clientSocket, SystemStats stats) {
+    public ClientHandler(Socket clientSocket, SystemStats stats, Connection conn) {
         this.clientSocket = clientSocket;
         this.stats = stats;
+        this.conn = conn;
     }
 
     @Override
@@ -33,7 +32,7 @@ public class ClientHandler implements Runnable {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
             System.out.println("Sensor connected: " + clientSocket.getInetAddress());
-            clientSocket.setSoTimeout(5000);
+            clientSocket.setSoTimeout(10000);
             String data = in.readLine();
             processRequest(data, out);
         } catch (IOException e) {
@@ -53,8 +52,7 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleData(String data) {
-        try (Connection conn = openConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
             String[] parts = data.split(":");
             String deviceId = parts[0].trim();
             String newTemp = parts[1].trim();
@@ -69,17 +67,26 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void updateDeviceStatus(String deviceId){
-
-    }
-
-    private Connection openConnection() throws SQLException {
-        try {
-            log.info("Opening database connection");
-            return DriverManager.getConnection(URL, LOGIN, PASSWORD);
+    private void updateDeviceStatus(String deviceId) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_DEVICE);
+             PreparedStatement update = conn.prepareStatement(SQL_UPDATE_DEVICE);
+             PreparedStatement insert = conn.prepareStatement(SQL_INSERT_DEVICE)) {
+            conn.setAutoCommit(false);
+            stmt.setString(1, deviceId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                update.setString(1, deviceId);
+                update.executeUpdate();
+            } else {
+                insert.setString(1, deviceId);
+                insert.executeUpdate();
+            }
+            conn.commit();
         } catch (SQLException e) {
-            log.warn("Unable to establish database connection", e);
-            throw new DataAccessException("Impossible connect with database", e);
+            conn.rollback();
+            throw new RuntimeException(e);
+        }finally {
+            conn.setAutoCommit(true);
         }
     }
 }
