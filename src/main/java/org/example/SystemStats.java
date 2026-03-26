@@ -18,7 +18,6 @@ public class SystemStats {
     private final AtomicReference<Double> atomicHighTemp = new AtomicReference<>();
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
 
-
     public void updateWithLock(double newTemp) {
         lock.lock();
         try {
