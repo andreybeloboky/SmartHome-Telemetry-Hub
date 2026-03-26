@@ -36,6 +36,7 @@ public class SmartHomeHub {
         } catch (IOException e) {
             System.err.println("Could not start server: " + e.getMessage());
         }
+
     }
 
     private static void processRequest(String data, PrintWriter out) {
