@@ -1,4 +1,4 @@
-package org.example;
+package org.example.controller;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -9,9 +9,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.service.ClientHandler;
+import org.example.service.SystemStats;
 
 @Slf4j
-public class SmartHomeHub {
+public class SmartHomeHubController {
 
     public static void main(String[] args) {
         SystemStats systemStats = new SystemStats();

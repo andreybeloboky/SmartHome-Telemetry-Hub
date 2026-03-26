@@ -1,4 +1,4 @@
-package org.example;
+package org.example.service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.exception.DataAccessException;
 
 @Slf4j
 public class ClientHandler implements Runnable {
