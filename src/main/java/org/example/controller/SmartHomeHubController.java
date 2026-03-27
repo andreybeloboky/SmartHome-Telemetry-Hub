@@ -11,6 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.example.exception.DataAccessException;
 import org.example.service.ClientHandler;
@@ -22,6 +24,7 @@ public class SmartHomeHubController {
     private static final String URL = System.getenv("DB_URL");
     private static final String LOGIN = System.getenv("DB_LOGIN");
     private static final String PASSWORD = System.getenv("DB_PASSWORD");
+    private static HikariDataSource dataSource;
 
     public static void main(String[] args) {
         SystemStats systemStats = new SystemStats();
@@ -40,10 +43,11 @@ public class SmartHomeHubController {
         try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");
             while (true) {
+                Socket socket = serverSocket.accept();
                 executor.execute(() -> {
-                    try (Socket socket = serverSocket.accept();
+                    try (Socket s = socket;
                          Connection connection = openConnection()) {
-                        new ClientHandler(socket, systemStats, connection).run();
+                        new ClientHandler(s, systemStats, connection).run();
                     } catch (SQLException e) {
                         log.error("SQL error while processing client request", e);
                         throw new RuntimeException(e);
@@ -59,10 +63,19 @@ public class SmartHomeHubController {
         }
     }
 
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(URL);
+        config.setUsername(LOGIN);
+        config.setPassword(PASSWORD);
+        config.setMaximumPoolSize(10);
+        dataSource = new HikariDataSource(config);
+    }
+
     private static Connection openConnection() throws SQLException {
         try {
             log.info("Opening database connection");
-            return DriverManager.getConnection(URL, LOGIN, PASSWORD);
+            return dataSource.getConnection();
         } catch (SQLException e) {
             log.warn("Unable to establish database connection", e);
             throw new DataAccessException("Impossible connect with database", e);
