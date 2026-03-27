@@ -40,12 +40,15 @@ public class SmartHomeHubController {
         try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");
             while (true) {
-                Socket socket = serverSocket.accept();
                 executor.execute(() -> {
-                    try (Connection connection = openConnection()) {
+                    try (Socket socket = serverSocket.accept();
+                         Connection connection = openConnection()) {
                         new ClientHandler(socket, systemStats, connection).run();
                     } catch (SQLException e) {
                         log.error("SQL error while processing client request", e);
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        log.error("Could not start server on port 8080", e);
                         throw new RuntimeException(e);
                     }
                 });
