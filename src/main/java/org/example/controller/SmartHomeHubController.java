@@ -37,16 +37,21 @@ public class SmartHomeHubController {
             executor.shutdown();
             monitor.shutdown();
         }));
-        try (Connection connection = openConnection();
-             ServerSocket serverSocket = new ServerSocket(8080)) {
+        try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");
             while (true) {
                 Socket socket = serverSocket.accept();
-                executor.execute(new ClientHandler(socket, systemStats, connection));
+                executor.execute(() -> {
+                    try (Connection connection = openConnection()) {
+                        new ClientHandler(socket, systemStats, connection).run();
+                    } catch (SQLException e) {
+                        log.error("SQL error while processing client request", e);
+                        throw new RuntimeException(e);
+                    }
+                });
             }
         } catch (IOException e) {
-            System.err.println("Could not start server: " + e.getMessage());
-        } catch (SQLException e) {
+            log.error("Could not start server on port 8080", e);
             throw new RuntimeException(e);
         }
     }

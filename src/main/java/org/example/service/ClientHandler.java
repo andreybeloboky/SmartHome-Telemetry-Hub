@@ -31,16 +31,20 @@ public class ClientHandler implements Runnable {
     public void run() {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
-            System.out.println("Sensor connected: " + clientSocket.getInetAddress());
+            log.info("Sensor connected: {}", clientSocket.getInetAddress());
             clientSocket.setSoTimeout(10000);
             String data = in.readLine();
             processRequest(data, out);
+            clientSocket.close();
         } catch (IOException e) {
             System.err.println("Error handling client: " + e.getMessage());
+        } catch (SQLException e) {
+            log.error("SQL error while processing client request", e);
+            throw new RuntimeException(e);
         }
     }
 
-    private void processRequest(String data, PrintWriter out) {
+    private void processRequest(String data, PrintWriter out) throws SQLException {
         if (data != null && data.contains(":")) {
             handleData(data);
             System.out.printf("Received and Saved: [%s] \n", data);
@@ -51,19 +55,26 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void handleData(String data) {
+    private void handleData(String data) throws SQLException {
+        String[] parts = data.split(":");
+        String deviceId = parts[0].trim();
+        double newTemp = Double.parseDouble(parts[1].trim());
+        updateDeviceStatus(deviceId);
+        log.debug("Device status updated for device_id={}", deviceId);
+        stats.updateWithLock(newTemp);
         try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
-            String[] parts = data.split(":");
-            String deviceId = parts[0].trim();
-            String newTemp = parts[1].trim();
-            updateDeviceStatus(deviceId);
-            stats.updateWithLock(Double.parseDouble(newTemp));
+            conn.setAutoCommit(false);
             stmt.setString(1, deviceId);
-            stmt.setDouble(2, Double.parseDouble(newTemp));
+            stmt.setDouble(2, newTemp);
             stmt.executeUpdate();
+            log.debug("Inserted sensor log: device_id={}, value={}", deviceId, newTemp);
+            conn.commit();
         } catch (SQLException e) {
-            log.warn("Error while loading", e);
+            conn.rollback();
+            log.warn("Failed to insert sensor log for device", e);
             throw new DataAccessException("Failed to load investment from database", e);
+        } finally {
+            conn.setAutoCommit(true);
         }
     }
 
@@ -84,8 +95,9 @@ public class ClientHandler implements Runnable {
             conn.commit();
         } catch (SQLException e) {
             conn.rollback();
+            log.error("Failed to update device status for device_id= {}", deviceId, e);
             throw new RuntimeException(e);
-        }finally {
+        } finally {
             conn.setAutoCommit(true);
         }
     }

@@ -15,7 +15,7 @@ public class SystemStats {
     private double highestTemperatureProcessed;
     private final ReentrantLock lock = new ReentrantLock();
     private final AtomicInteger atomicTotalReading = new AtomicInteger();
-    private final AtomicReference<Double> atomicHighTemp = new AtomicReference<>();
+    private final AtomicReference<Double> atomicHighTemp = new AtomicReference<>(0.0);
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
 
     public void updateWithLock(double newTemp) {
