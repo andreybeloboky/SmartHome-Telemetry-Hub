@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,7 +23,7 @@ public class SmartHomeHubController {
     private static final String URL = System.getenv("DB_URL");
     private static final String LOGIN = System.getenv("DB_LOGIN");
     private static final String PASSWORD = System.getenv("DB_PASSWORD");
-    private static HikariDataSource dataSource;
+    private static final HikariDataSource dataSource;
 
     public static void main(String[] args) {
         SystemStats systemStats = new SystemStats();
