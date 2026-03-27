@@ -29,13 +29,13 @@ public class ClientHandler implements Runnable {
 
     @Override
     public void run() {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        try (clientSocket;
+             BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
              PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
             log.info("Sensor connected: {}", clientSocket.getInetAddress());
             clientSocket.setSoTimeout(10000);
             String data = in.readLine();
             processRequest(data, out);
-            clientSocket.close();
         } catch (IOException e) {
             System.err.println("Error handling client: " + e.getMessage());
         } catch (SQLException e) {
@@ -58,21 +58,23 @@ public class ClientHandler implements Runnable {
     private void handleData(String data) throws SQLException {
         String[] parts = data.split(":");
         String deviceId = parts[0].trim();
-        double newTemp = Double.parseDouble(parts[1].trim());
-        updateDeviceStatus(deviceId);
         log.debug("Device status updated for device_id={}", deviceId);
-        stats.updateWithLock(newTemp);
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+        try {
+            double newTemp = Double.parseDouble(parts[1].trim());
             conn.setAutoCommit(false);
-            stmt.setString(1, deviceId);
-            stmt.setDouble(2, newTemp);
-            stmt.executeUpdate();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT)) {
+                stmt.setString(1, deviceId);
+                stmt.setDouble(2, newTemp);
+                stmt.executeUpdate();
+            }
+            updateDeviceStatus(deviceId);
             log.debug("Inserted sensor log: device_id={}, value={}", deviceId, newTemp);
             conn.commit();
-        } catch (SQLException e) {
+            stats.updateWithLock(newTemp);
+        } catch (SQLException | NumberFormatException e) {
             conn.rollback();
             log.warn("Failed to insert sensor log for device", e);
-            throw new DataAccessException("Failed to load investment from database", e);
+            throw new DataAccessException("Failed to save sensor reading", e);
         } finally {
             conn.setAutoCommit(true);
         }
@@ -82,7 +84,6 @@ public class ClientHandler implements Runnable {
         try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_DEVICE);
              PreparedStatement update = conn.prepareStatement(SQL_UPDATE_DEVICE);
              PreparedStatement insert = conn.prepareStatement(SQL_INSERT_DEVICE)) {
-            conn.setAutoCommit(false);
             stmt.setString(1, deviceId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -92,13 +93,6 @@ public class ClientHandler implements Runnable {
                 insert.setString(1, deviceId);
                 insert.executeUpdate();
             }
-            conn.commit();
-        } catch (SQLException e) {
-            conn.rollback();
-            log.error("Failed to update device status for device_id= {}", deviceId, e);
-            throw new RuntimeException(e);
-        } finally {
-            conn.setAutoCommit(true);
         }
     }
 }
