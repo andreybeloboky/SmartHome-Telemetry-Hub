@@ -38,6 +38,7 @@ public class SmartHomeHubController {
             System.out.println("Shutting down...");
             executor.shutdown();
             monitor.shutdown();
+            dataSource.close();
         }));
         try (ServerSocket serverSocket = new ServerSocket(8080)) {
             System.out.println("Hub started. Waiting for sensors...");

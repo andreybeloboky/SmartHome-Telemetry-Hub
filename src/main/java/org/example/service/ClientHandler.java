@@ -17,9 +17,14 @@ public class ClientHandler implements Runnable {
     private final SystemStats stats;
     private final Connection conn;
     private static final String SQL_INSERT = "INSERT INTO sensor_logs (device_name, reading_value) VALUES (?, ?)";
-    private static final String SQL_INSERT_DEVICE = "INSERT INTO device_status (device_id, total_messages_sent) VALUES (?,1)";
-    private static final String SQL_UPDATE_DEVICE = "UPDATE device_status SET total_messages_sent = total_messages_sent+1, last_seen = CURRENT_TIMESTAMP WHERE device_id = ?";
-    private static final String SQL_SELECT_DEVICE = "SELECT device_id FROM device_status WHERE device_id = ? FOR UPDATE";
+    private static final String SQL_UPSERT_DEVICE = """
+            INSERT INTO device_status (device_id, total_messages_sent, last_seen)
+                VALUES (?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT (device_id)
+                DO UPDATE SET
+                        total_messages_sent = device_status.total_messages_sent + 1,
+                        last_seen = CURRENT_TIMESTAMP;
+            """;
 
     public ClientHandler(Socket clientSocket, SystemStats stats, Connection conn) {
         this.clientSocket = clientSocket;
@@ -81,18 +86,9 @@ public class ClientHandler implements Runnable {
     }
 
     private void updateDeviceStatus(String deviceId) throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_DEVICE);
-             PreparedStatement update = conn.prepareStatement(SQL_UPDATE_DEVICE);
-             PreparedStatement insert = conn.prepareStatement(SQL_INSERT_DEVICE)) {
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPSERT_DEVICE)) {
             stmt.setString(1, deviceId);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                update.setString(1, deviceId);
-                update.executeUpdate();
-            } else {
-                insert.setString(1, deviceId);
-                insert.executeUpdate();
-            }
+            stmt.executeUpdate();
         }
     }
 }
